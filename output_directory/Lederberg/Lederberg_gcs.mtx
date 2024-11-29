@@ -1,3 +1,9 @@
+%%MatrixMarket matrix array real general
+%-------------------------------------------------------------------------------
+% UF Sparse Matrix Collection, Tim Davis
+% http://www.cise.ufl.edu/research/sparse/matrices/Pajek/Lederberg
+% name: Pajek/Lederberg : gcs matrix
+%-------------------------------------------------------------------------------
 8843 1
 109
 38

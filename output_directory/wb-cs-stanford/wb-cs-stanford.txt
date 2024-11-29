@@ -1,0 +1,16 @@
+%-------------------------------------------------------------------------------
+% UF Sparse Matrix Collection, Tim Davis
+% http://www.cise.ufl.edu/research/sparse/matrices/Gleich/wb-cs-stanford
+% name: Gleich/wb-cs-stanford
+% [Stanford CS web, A(i,j)=1 if page i links to page j (2001)]
+% id: 1841
+% date: 2001
+% author: D. Gleich
+% ed: T. Davis
+% fields: name title A id date author ed kind notes
+% kind: directed graph
+%-------------------------------------------------------------------------------
+% notes:
+% For nodenames, see http://www.cise.ufl.edu/research/sparse/aux/Gleich
+% This graph is a subset of Gleich/wb-edu, with *.cs.stanford.edu only.
+%-------------------------------------------------------------------------------
