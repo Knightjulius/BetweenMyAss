@@ -1,6 +1,20 @@
 import random
 import networkx as nx
 import time
+import os
+
+def save_centrality_to_file(centrality_dict, output_folder, file_name):
+    """Save centrality results to a text file."""
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    file_path = os.path.join(output_folder, file_name)
+    with open(file_path, 'w') as f:
+        f.write("Node\tBetweennessCentrality\n")
+        for node, centrality in centrality_dict.items():
+            f.write(f"{node}\t{centrality}\n")
+    
+    print(f"Centrality results saved to {file_path}")
 
 def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sorted):
     for w in nodes_sorted:
@@ -49,17 +63,20 @@ def approximate_BC(G, v, c):
     return sum * n / k if k > 0 else 0
 
 # Generate Erdos-Renyi random graph
-G = nx.read_edgelist('output_directory/wb-cs-stanford/wb-cs-stanford.mtx')
-target_node = list(G.nodes)[0]
+G = nx.read_edgelist('wiki-Vote.txt.gz')
 c = 10  # Threshold constant
 
 start_time = time.time()
-approx_centrality = approximate_BC(G, target_node, c)
+approx_centrality = {node: approximate_BC(G, node, c) for node in G.nodes}
 approx_time = time.time() - start_time
-print(f"Approximate Betweenness Centrality for node {target_node}: {approx_centrality} (computed in {approx_time:.4f} seconds)")
+average_approx_bc = sum(approx_centrality.values()) / len(approx_centrality)
+print(f"Approximate Betweenness Centrality for all nodes computed in {approx_time:.4f} seconds")
+print(f"Average Approximate Betweenness Centrality: {average_approx_bc:.4f}")
 
 # Measure time for exact betweenness centrality
 start_time = time.time()
 exact_centrality = nx.betweenness_centrality(G, normalized=False)
 exact_time = time.time() - start_time
-print(f"Exact Betweenness Centrality for node {target_node}: {exact_centrality[target_node]} (computed in {exact_time:.4f} seconds)")
+average_exact_bc = sum(exact_centrality.values()) / len(exact_centrality)
+print(f"Exact Betweenness Centrality for all nodes computed in {exact_time:.4f} seconds")
+print(f"Average Exact Betweenness Centrality: {average_exact_bc:.4f}")
