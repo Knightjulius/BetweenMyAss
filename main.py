@@ -1,5 +1,6 @@
 import random
 import networkx as nx
+import time
 
 def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sorted):
     for w in nodes_sorted:
@@ -52,9 +53,13 @@ G = nx.read_edgelist('output_directory/wb-cs-stanford/wb-cs-stanford.mtx')
 target_node = list(G.nodes)[0]
 c = 10  # Threshold constant
 
+start_time = time.time()
 approx_centrality = approximate_BC(G, target_node, c)
-print(f"Approximate Betweenness Centrality for node {target_node}: {approx_centrality}")
+approx_time = time.time() - start_time
+print(f"Approximate Betweenness Centrality for node {target_node}: {approx_centrality} (computed in {approx_time:.4f} seconds)")
 
-# Calculate exact betweenness centrality using NetworkX
+# Measure time for exact betweenness centrality
+start_time = time.time()
 exact_centrality = nx.betweenness_centrality(G, normalized=False)
-print(f"Exact Betweenness Centrality for node {target_node}: {exact_centrality[target_node]}")
+exact_time = time.time() - start_time
+print(f"Exact Betweenness Centrality for node {target_node}: {exact_centrality[target_node]} (computed in {exact_time:.4f} seconds)")
