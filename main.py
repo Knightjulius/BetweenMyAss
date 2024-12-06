@@ -1,7 +1,43 @@
-import random
 import networkx as nx
-import time
+import scipy.io
+import numpy as np
+import tarfile
+import requests
+import random
+import matplotlib as plt
+from collections import Counter
 import os
+import pandas as pd
+import time
+
+# Function to read .mtx files (both weighted and unweighted) and create a graph
+def read_mtx_file(file_path, weighted=True):
+    G = nx.Graph()  # or nx.DiGraph() if the graph is directed
+    
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+        
+    # Skip header lines that start with '%%' (Matrix Market metadata)
+    matrix_data = [line for line in lines if not line.startswith('%%') and line.strip()]
+    
+    # Read the edges from the matrix data and add them to the graph
+    for line in matrix_data:
+        try:
+            # Split the line into components
+            parts = line.split()
+            u, v = int(parts[0]), int(parts[1])  # Convert nodes to integers
+            
+            if weighted:
+                # If the graph is weighted, assume the third element is the weight
+                weight = float(parts[2])
+                G.add_edge(u, v, weight=weight)
+            else:
+                # If unweighted, just add the edge without weight
+                G.add_edge(u, v)
+        except ValueError:
+            print(f"Skipping invalid line: {line.strip()}")
+    
+    return G
 
 def save_centrality_to_file(centrality_dict, output_folder, file_name):
     """Save centrality results to a text file."""
@@ -23,17 +59,7 @@ def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sort
             fraction = num_paths[v] / num_paths[w]
             dependency[v] += fraction * (1 + dependency[w])
         if w != source:
-            dependency[w] += 0  # Dependency is not propagated to the source
-    return dependency
-
-def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sorted):
-    for w in nodes_sorted:
-        for v in predecessors[w]:
-            # λ_sv / λ_sw * (1 + δ_s*(w))
-            fraction = num_paths[v] / num_paths[w]
-            dependency[v] += fraction * (1 + dependency[w])
-        if w != source:
-            dependency[w] += 0  # Dependency is not propagated to the source
+            pass  # Dependency is not propagated to the source
     return dependency
 
 def approximate_BC(G, c):
@@ -60,7 +86,11 @@ def approximate_BC(G, c):
         # Calculate dependencies
         dependency = {node: 0 for node in G.nodes}
         nodes_sorted = sorted(shortest_paths, key=shortest_paths.get, reverse=True)
-        dependency = calculate_dependency(predecessors, lambda_sw, dependency, s, nodes_sorted)
+        for w in nodes_sorted:
+            for v in predecessors[w]:
+                # λ_sv / λ_sw * (1 + δ_s*(w))
+                fraction = lambda_sw[v] / lambda_sw[w]
+                dependency[v] += fraction * (1 + dependency[w])
 
         # Update betweenness centrality for all nodes
         for v in G.nodes:
@@ -73,9 +103,12 @@ def approximate_BC(G, c):
     betweenness = {node: b * n / k for node, b in betweenness.items()}
     return betweenness
 
+n = 2000  # Number of vertices
+m = 7980  # Number of edges
+
 # Generate Erdos-Renyi random graph
-G = nx.read_edgelist('wiki-Vote.txt.gz')
-c = 10  # Threshold constant
+G = nx.gnm_random_graph(n, m, seed=42)
+c = 3
 
 start_time = time.time()
 approx_centrality = approximate_BC(G, c)
@@ -91,3 +124,9 @@ exact_time = time.time() - start_time
 average_exact_bc = sum(exact_centrality.values()) / len(exact_centrality)
 print(f"Exact Betweenness Centrality for all nodes computed in {exact_time:.4f} seconds")
 print(f"Average Exact Betweenness Centrality: {average_exact_bc:.4f}")
+
+'''
+output_folder = "BetweennessCentrality"
+file_name = "betweenness_centrality_Amazon.txt"
+save_centrality_to_file(exact_centrality, output_folder, file_name)
+'''
