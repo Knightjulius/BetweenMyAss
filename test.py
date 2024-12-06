@@ -114,7 +114,7 @@ def approximate_BC(G, c):
             if v in path:
                 lambda_sw[target] += 1
     
-    	# TODO calculate dependency and update running sum
+    	# TODO calculate dependency and update running sum, division by zero error
         # Step 7: calculate dependency
         dependency = {node: 0 for node in node_list}
         # for all nodes in the list 
@@ -124,33 +124,21 @@ def approximate_BC(G, c):
 
                 # λ_sv / λ_sw * (1 + δ_s*(w))
                 fraction = lambda_sw[v] / lambda_sw[w]
-                dependency[v] += fraction * (1 + dependency[w])
+                S += fraction * (1 + dependency[w])
 
         
         k += 1  # Increment the number of samples
 
     # Normalize the betweenness centrality
-    betweenness = {node: b * n / k for node, b in betweenness.items()}
+    betweenness = n*S/k
     return betweenness
 
-n = 2000  # Number of vertices
-m = 7980  # Number of edges
+# Create a simple graph
+G = nx.Graph()
+G.add_edges_from([('A', 'B'), ('B', 'C'), ('A', 'D'), ('B', 'E'), ('D', 'E')])
 
-# Generate Erdos-Renyi random graph
-G = nx.gnm_random_graph(n, m, seed=42)
-c = 3
-
-start_time = time.time()
-approx_centrality = approximate_BC(G, c)
-approx_time = time.time() - start_time
-average_approx_bc = sum(approx_centrality.values()) / len(approx_centrality)
-print(f"Approximate Betweenness Centrality for all nodes computed in {approx_time:.4f} seconds")
-print(f"Average Approximate Betweenness Centrality: {average_approx_bc:.4f}")
-
-# Measure time for exact betweenness centrality
-#start_time = time.time()
-#exact_centrality = nx.betweenness_centrality(G, normalized=False)
-#exact_time = time.time() - start_time
-#average_exact_bc = sum(exact_centrality.values()) / len(exact_centrality)
-#print(f"Exact Betweenness Centrality for all nodes computed in {exact_time:.4f} seconds")
-#print(f"Average Exact Betweenness Centrality: {average_exact_bc:.4f}")
+# List of nodes
+node_list = list(G.nodes)
+c = 1
+B = approximate_BC(G, c)
+print(B)
