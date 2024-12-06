@@ -26,22 +26,30 @@ def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sort
             dependency[w] += 0  # Dependency is not propagated to the source
     return dependency
 
-def approximate_BC(G, v, c):
-    #step 1
-    sum = 0 
-    #step 2
-    k = 0 
-    #step 3
+def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sorted):
+    for w in nodes_sorted:
+        for v in predecessors[w]:
+            # λ_sv / λ_sw * (1 + δ_s*(w))
+            fraction = num_paths[v] / num_paths[w]
+            dependency[v] += fraction * (1 + dependency[w])
+        if w != source:
+            dependency[w] += 0  # Dependency is not propagated to the source
+    return dependency
+
+def approximate_BC(G, c):
     n = G.number_of_nodes()
-    while sum < c * n:
-        #step 4
+    betweenness = {node: 0 for node in G.nodes}  # Initialize betweenness centrality for all nodes
+    k = 0  # Counter for the number of samples
+
+    while any(b < c * n for b in betweenness.values()):
+        # Step 4: Choose a random source node
         s = random.choice(list(G.nodes))
-        #step 5
+        # Step 5: Compute shortest paths from the source
         shortest_paths = nx.single_source_shortest_path_length(G, s)
-        #step 6
-        lambda_sw = {node: 0 for node in G.nodes} 
+        # Step 6: Initialize λ_sw and predecessors
+        lambda_sw = {node: 0 for node in G.nodes}
         lambda_sw[s] = 1
-        predecessors = {node: [] for node in G.nodes}  # P_s(w)
+        predecessors = {node: [] for node in G.nodes}
 
         for node, dist in sorted(shortest_paths.items(), key=lambda x: x[1]):
             for neighbor in G.neighbors(node):
@@ -49,25 +57,28 @@ def approximate_BC(G, v, c):
                     lambda_sw[node] += lambda_sw[neighbor]
                     predecessors[node].append(neighbor)
 
-        # fill dependency dictionary
+        # Calculate dependencies
         dependency = {node: 0 for node in G.nodes}
         nodes_sorted = sorted(shortest_paths, key=shortest_paths.get, reverse=True)
         dependency = calculate_dependency(predecessors, lambda_sw, dependency, s, nodes_sorted)
 
-        #step 7
-        if v in dependency:
-            sum += dependency[v]
-        #step 8
-        k += 1
+        # Update betweenness centrality for all nodes
+        for v in G.nodes:
+            if v != s:
+                betweenness[v] += dependency[v]
+        
+        k += 1  # Increment the number of samples
 
-    return sum * n / k if k > 0 else 0
+    # Normalize the betweenness centrality
+    betweenness = {node: b * n / k for node, b in betweenness.items()}
+    return betweenness
 
 # Generate Erdos-Renyi random graph
 G = nx.read_edgelist('wiki-Vote.txt.gz')
 c = 10  # Threshold constant
 
 start_time = time.time()
-approx_centrality = {node: approximate_BC(G, node, c) for node in G.nodes}
+approx_centrality = approximate_BC(G, c)
 approx_time = time.time() - start_time
 average_approx_bc = sum(approx_centrality.values()) / len(approx_centrality)
 print(f"Approximate Betweenness Centrality for all nodes computed in {approx_time:.4f} seconds")
