@@ -1,7 +1,43 @@
-import random
 import networkx as nx
-import time
+import scipy.io
+import numpy as np
+import tarfile
+import requests
+import random
+import matplotlib as plt
+from collections import Counter
 import os
+import pandas as pd
+import time
+
+# Function to read .mtx files (both weighted and unweighted) and create a graph
+def read_mtx_file(file_path, weighted=True):
+    G = nx.Graph()  # or nx.DiGraph() if the graph is directed
+    
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+        
+    # Skip header lines that start with '%%' (Matrix Market metadata)
+    matrix_data = [line for line in lines if not line.startswith('%%') and line.strip()]
+    
+    # Read the edges from the matrix data and add them to the graph
+    for line in matrix_data:
+        try:
+            # Split the line into components
+            parts = line.split()
+            u, v = int(parts[0]), int(parts[1])  # Convert nodes to integers
+            
+            if weighted:
+                # If the graph is weighted, assume the third element is the weight
+                weight = float(parts[2])
+                G.add_edge(u, v, weight=weight)
+            else:
+                # If unweighted, just add the edge without weight
+                G.add_edge(u, v)
+        except ValueError:
+            print(f"Skipping invalid line: {line.strip()}")
+    
+    return G
 
 def save_centrality_to_file(centrality_dict, output_folder, file_name):
     """Save centrality results to a text file."""
@@ -16,54 +52,80 @@ def save_centrality_to_file(centrality_dict, output_folder, file_name):
     
     print(f"Centrality results saved to {file_path}")
 
+# TODO Donny ik heb dit toegevoegd
+# Function to calculate shortest paths
+def shortest_path_calculation(shortest_paths, node_list, s, G):
+    for node in node_list:
+        if len(shortest_paths[s][node]) == 0:  # Only calculate if the shortest path is empty
+            new_path = nx.shortest_path(G, source=node, target=s)  # Get the shortest path from node to s
+            shortest_paths[s][node] = new_path
+            
+            # Propagate the reverse shortest path as well (i.e., from node to s)
+            shortest_paths[node][s] = new_path[::-1]  # Reverse the path from s to node
+            
+            # Automatically propagate shortest paths to other nodes
+            # If we have A -> B -> C, then we also know B -> C
+            for i in range(len(new_path) - 1):
+                u = new_path[i]
+                v = new_path[i + 1]
+                if len(shortest_paths[u][v]) == 0:  # If we haven't already added the path
+                    shortest_paths[u][v] = [u, v]
+                    shortest_paths[v][u] = [v, u]  # Also store the reverse path
+
+    return shortest_paths
+
 def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sorted):
-    """
-    Calculate the dependency values for each node based on predecessors and 
-    number of shortest paths.
-    """
     for w in nodes_sorted:
-        # For each predecessor v of node w
         for v in predecessors[w]:
             # λ_sv / λ_sw * (1 + δ_s*(w))
-            fraction = num_paths[v] / num_paths[w]  # λ_sv / λ_sw
-            dependency[v] += fraction * (1 + dependency[w])  # Accumulate dependency
-
-        # Dependency is not propagated to the source
+            fraction = num_paths[v] / num_paths[w]
+            dependency[v] += fraction * (1 + dependency[w])
         if w != source:
-            dependency[w] += 0  # This line is redundant, but kept for clarity
-
+            pass  # Dependency is not propagated to the source
     return dependency
 
 def approximate_BC(G, c):
     n = G.number_of_nodes()
-    betweenness = {node: 0 for node in G.nodes}  # Initialize betweenness centrality for all nodes
     k = 0  # Counter for the number of samples
-
-    while any(b < c * n for b in betweenness.values()):
+    # TODO Donny ik heb dit toegevoegd
+    # Initialize shortest paths as a dict with empty entries
+    node_list = G.nodes
+    shortest_paths = {node: {other_node: [] for other_node in node_list} for node in node_list}
+    # running sum set to 0
+    # TODO change v
+    v = 1
+    S = 0
+    while S < c * n:
         # Step 4: Choose a random source node
         s = random.choice(list(G.nodes))
         # Step 5: Compute shortest paths from the source
-        shortest_paths = nx.single_source_shortest_path_length(G, s)
-        # Step 6: Initialize λ_sw and predecessors
-        lambda_sw = {node: 0 for node in G.nodes}
+        shortest_paths = shortest_path_calculation(shortest_paths, node_list, s, G)
+
+        # Step 6: get predecessors and lambda
+        lambda_sw = {node: 0 for node in node_list}
         lambda_sw[s] = 1
-        predecessors = {node: [] for node in G.nodes}
 
-        for node, dist in sorted(shortest_paths.items(), key=lambda x: x[1]):
-            for neighbor in G.neighbors(node):
-                if shortest_paths.get(neighbor, float('inf')) == dist - 1:
-                    lambda_sw[node] += lambda_sw[neighbor]
-                    predecessors[node].append(neighbor)
+        predecessors = {node: [] for node in node_list}
 
-        # Calculate dependencies
-        dependency = {node: 0 for node in G.nodes}
-        nodes_sorted = sorted(shortest_paths, key=shortest_paths.get, reverse=True)
-        dependency = calculate_dependency(predecessors, lambda_sw, dependency, s, nodes_sorted)
+        for target, path in shortest_paths[s].items():
+            # gives all predecessors to s in a path minus s itself
+            predecessors[target] = path[:-1]
+            # if v is in the path then update the lambda value
+            if v in path:
+                lambda_sw[target] += 1
+    
+    	# TODO calculate dependency and update running sum
+        # Step 7: calculate dependency
+        dependency = {node: 0 for node in node_list}
+        # for all nodes in the list 
+        for w in node_list:
+            # for a predecessor of the node being looked at
+            for v in predecessors[w]:
 
-        # Update betweenness centrality for all nodes
-        for v in G.nodes:
-            if v != s:
-                betweenness[v] += dependency[v]
+                # λ_sv / λ_sw * (1 + δ_s*(w))
+                fraction = lambda_sw[v] / lambda_sw[w]
+                dependency[v] += fraction * (1 + dependency[w])
+
         
         k += 1  # Increment the number of samples
 
@@ -71,9 +133,12 @@ def approximate_BC(G, c):
     betweenness = {node: b * n / k for node, b in betweenness.items()}
     return betweenness
 
+n = 2000  # Number of vertices
+m = 7980  # Number of edges
+
 # Generate Erdos-Renyi random graph
-G = nx.read_edgelist('wiki-Vote.txt.gz')
-c = 10  # Threshold constant
+G = nx.gnm_random_graph(n, m, seed=42)
+c = 3
 
 start_time = time.time()
 approx_centrality = approximate_BC(G, c)
@@ -83,9 +148,9 @@ print(f"Approximate Betweenness Centrality for all nodes computed in {approx_tim
 print(f"Average Approximate Betweenness Centrality: {average_approx_bc:.4f}")
 
 # Measure time for exact betweenness centrality
-start_time = time.time()
-exact_centrality = nx.betweenness_centrality(G, normalized=False)
-exact_time = time.time() - start_time
-average_exact_bc = sum(exact_centrality.values()) / len(exact_centrality)
-print(f"Exact Betweenness Centrality for all nodes computed in {exact_time:.4f} seconds")
-print(f"Average Exact Betweenness Centrality: {average_exact_bc:.4f}")
+#start_time = time.time()
+#exact_centrality = nx.betweenness_centrality(G, normalized=False)
+#exact_time = time.time() - start_time
+#average_exact_bc = sum(exact_centrality.values()) / len(exact_centrality)
+#print(f"Exact Betweenness Centrality for all nodes computed in {exact_time:.4f} seconds")
+#print(f"Average Exact Betweenness Centrality: {average_exact_bc:.4f}")
