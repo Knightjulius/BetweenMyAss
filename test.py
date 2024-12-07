@@ -52,7 +52,7 @@ def save_centrality_to_file(centrality_dict, output_folder, file_name):
     
     print(f"Centrality results saved to {file_path}")
 
-# TODO Donny ik heb dit toegevoegd
+
 # Function to calculate shortest paths
 def shortest_path_calculation(shortest_paths, node_list, s, G):
     for node in node_list:
@@ -87,50 +87,45 @@ def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sort
 def approximate_BC(G, c):
     n = G.number_of_nodes()
     k = 0  # Counter for the number of samples
-    # TODO Donny ik heb dit toegevoegd
     # Initialize shortest paths as a dict with empty entries
     node_list = G.nodes
     shortest_paths = {node: {other_node: [] for other_node in node_list} for node in node_list}
+    # Initialize all betweenness for all nodes to 0
+    betweenness = {node: 0 for node in node_list}
+    print(betweenness)
     # running sum set to 0
-    # TODO change v
-    v = 1
     S = 0
-    while S < c * n:
-        # Step 4: Choose a random source node
-        s = random.choice(list(G.nodes))
-        # Step 5: Compute shortest paths from the source
-        shortest_paths = shortest_path_calculation(shortest_paths, node_list, s, G)
+    #  num SSP is for the calculation of the amount of SSPs calculated
+    num_SSP = 0
+    for v in node_list:
+        # running sum set to 0
+        S = 0
+        while S < c * n:
+            # Step 4: Choose a random source node
+            s = random.choice(list(G.nodes))
+            # Step 5: Compute shortest paths from the source
+            shortest_paths = shortest_path_calculation(shortest_paths, node_list, s, G)
+            num_SSP += 1
 
-        # Step 6: get predecessors and lambda
-        lambda_sw = {node: 0 for node in node_list}
-        lambda_sw[s] = 1
+            # Step 6: Track predecessor sets for each vertex
+            predecessors = {node: set() for node in node_list}
+            for target, path in shortest_paths[s].items():
+                for i in range(1, len(path)):  # Skip the source vertex
+                    predecessors[path[i]].add(path[i-1])  # Add the predecessor to the set
+            # Step 7: Calculate the dependency for vertex v
+            total_dependency = 0
+            for target, path in shortest_paths[s].items():
+                if target == s:  # Skip the source vertex
+                    continue
+                if v in predecessors[target]:
+                    total_dependency += 1
 
-        predecessors = {node: [] for node in node_list}
-
-        for target, path in shortest_paths[s].items():
-            # gives all predecessors to s in a path minus s itself
-            predecessors[target] = path[:-1]
-            # if v is in the path then update the lambda value
-            if v in path:
-                lambda_sw[target] += 1
-    
-    	# TODO calculate dependency and update running sum, division by zero error
-        # Step 7: calculate dependency
-        dependency = {node: 0 for node in node_list}
-        # for all nodes in the list 
-        for w in node_list:
-            # for a predecessor of the node being looked at
-            for v in predecessors[w]:
-
-                # λ_sv / λ_sw * (1 + δ_s*(w))
-                fraction = lambda_sw[v] / lambda_sw[w]
-                S += fraction * (1 + dependency[w])
-
-        
-        k += 1  # Increment the number of samples
-
-    # Normalize the betweenness centrality
-    betweenness = n*S/k
+            # Step 8: Update the running sum S
+            S += total_dependency
+            
+            k += 1  # Increment the number of samples
+        # calculate centrality
+        betweenness[v] = n*S/k
     return betweenness
 
 # Create a simple graph
@@ -141,4 +136,7 @@ G.add_edges_from([('A', 'B'), ('B', 'C'), ('A', 'D'), ('B', 'E'), ('D', 'E')])
 node_list = list(G.nodes)
 c = 1
 B = approximate_BC(G, c)
+print('Approximation')
 print(B)
+print('True BC:')
+print(nx.betweenness_centrality(G))
