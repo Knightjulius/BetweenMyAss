@@ -1,0 +1,4 @@
+Total Number of SSPs: 364
+Number of Nodes: 20
+SSP/Number of Nodes: 18.2
+Calculation Time (seconds): 0.0

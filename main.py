@@ -4,8 +4,9 @@ import random
 import time
 
 class GraphCentralityCalculator:
-    def __init__(self, graph):
+    def __init__(self, graph, graph_name):
         self.G = graph
+        self.graph_name = graph_name  # Save the graph name
         self.node_list = self.G.nodes
         self.shortest_paths = {node: {other_node: [] for other_node in self.node_list} for node in self.node_list}
         self.betweenness = {node: 0 for node in self.node_list}
@@ -16,7 +17,8 @@ class GraphCentralityCalculator:
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        file_path = os.path.join(output_folder, file_name)
+        # Include the graph name in the file path
+        file_path = os.path.join(output_folder, f"{self.graph_name}_{file_name}")
         with open(file_path, 'w') as f:
             f.write("Node\tBetweennessCentrality\n")
             for node, centrality in centrality_dict.items():
@@ -41,8 +43,8 @@ class GraphCentralityCalculator:
         # Perform the calculations (assuming some method here)
         approx_time = time.time() - start_time  # Time taken for the calculation
 
-        # Save to file
-        file_path = os.path.join(output_folder, file_name)
+        # Include the graph name in the file path
+        file_path = os.path.join(output_folder, f"{self.graph_name}_{file_name}")
         with open(file_path, 'w') as f:
             f.write(f"Total Number of SSPs: {num_SSP}\n")
             f.write(f"Number of Nodes: {num_nodes}\n")
@@ -73,20 +75,12 @@ class GraphCentralityCalculator:
                     self.shortest_paths[s][node] = []
                     self.shortest_paths[node][s] = []
 
-    def calculate_dependency(self, predecessors, num_paths, dependency, source, nodes_sorted):
-        for w in nodes_sorted:
-            for v in predecessors[w]:
-                fraction = num_paths[v] / num_paths[w]
-                dependency[v] += fraction * (1 + dependency[w])
-            if w != source:
-                pass
-        return dependency
-
     def approximate_BC(self, c):
         n = self.G.number_of_nodes()
         for v in self.node_list:
-            print(f'Looking at node{v}') 
-            if G.degree(v) == 0: # if the degree of v is 0 then the BC is automatically 0
+            print(f'Looking at node {v} out of {n}')
+            Degree = self.G.degree(v)
+            if Degree == 0 or Degree == 1: # if the degree of v is 0 or 1 then the BC is automatically 0
                 self.betweenness[v] = 0
             else:
                 S = 0
@@ -108,7 +102,6 @@ class GraphCentralityCalculator:
                         if v in predecessors[target]:
                             total_dependency += 1
                     S += total_dependency
-                    print(s, S, c*n)
                 self.betweenness[v] = n * S / k
         return self.betweenness
 
@@ -116,9 +109,10 @@ class GraphCentralityCalculator:
 def process_graph(input_file, output_folder, c_values):
     # Load the graph from the specified file
     G = nx.read_graphml(input_file)
-    print(f"Processing graph: {input_file}")
+    graph_name = os.path.basename(input_file).split('.')[0]  # Extract graph name from the file name
+    print(f"Processing graph: {graph_name}")
     
-    calculator = GraphCentralityCalculator(G)
+    calculator = GraphCentralityCalculator(G, graph_name)
 
     for c in c_values:
         print(f"Calculating Betweenness Centrality for c={c}...")
@@ -140,8 +134,7 @@ def process_all_graphs(input_folder, output_folder, c_values):
             file_path = os.path.join(input_folder, file_name)
             process_graph(file_path, output_folder, c_values)
 
-
-
+# Input and output folders, and c values to process
 input_folder = 'GraphsNetworkX'  # Folder containing the graph files
 output_folder = 'BetweennessResults'  # Folder to save the results
 c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
@@ -149,13 +142,7 @@ c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 # Uncomment the next line to process all graphs in the folder
 # process_all_graphs(input_folder, output_folder, c_values)
 
-# Uncomment the next lines to process a single specified graph
-# Test for small test graph
-n = 20  # Number of vertices
-m = 30  # Number of edges
-# Generate Erdos-Renyi random graph
-G = nx.gnm_random_graph(n, m, seed=42)
-nx.write_graphml(G, "GraphsNetworkX/Test1.graphml")
-single_graph = "GraphsNetworkX/Test1.graphml"  # Specify the graph file you want to process
+
+single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
 c_values = [1]  # Values of c to iterate over
 process_graph(single_graph, output_folder, c_values)
