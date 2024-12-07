@@ -103,6 +103,7 @@ class GraphCentralityCalculator:
                             total_dependency += 1
                     S += total_dependency
                 self.betweenness[v] = n * S / k
+
         return self.betweenness
 
 
@@ -143,6 +144,6 @@ c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 # process_all_graphs(input_folder, output_folder, c_values)
 
 
-single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
+single_graph = "GraphsNetworkX/Test1.graphml"  # Specify the graph file you want to process
 c_values = [1]  # Values of c to iterate over
 process_graph(single_graph, output_folder, c_values)
