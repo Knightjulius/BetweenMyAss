@@ -52,28 +52,6 @@ def save_centrality_to_file(centrality_dict, output_folder, file_name):
     
     print(f"Centrality results saved to {file_path}")
 
-
-# Function to calculate shortest paths
-def shortest_path_calculation(shortest_paths, node_list, s, G):
-    for node in node_list:
-        if len(shortest_paths[s][node]) == 0:  # Only calculate if the shortest path is empty
-            new_path = nx.shortest_path(G, source=node, target=s)  # Get the shortest path from node to s
-            shortest_paths[s][node] = new_path
-            
-            # Propagate the reverse shortest path as well (i.e., from node to s)
-            shortest_paths[node][s] = new_path[::-1]  # Reverse the path from s to node
-            
-            # Automatically propagate shortest paths to other nodes
-            # If we have A -> B -> C, then we also know B -> C
-            for i in range(len(new_path) - 1):
-                u = new_path[i]
-                v = new_path[i + 1]
-                if len(shortest_paths[u][v]) == 0:  # If we haven't already added the path
-                    shortest_paths[u][v] = [u, v]
-                    shortest_paths[v][u] = [v, u]  # Also store the reverse path
-
-    return shortest_paths
-
 def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sorted):
     for w in nodes_sorted:
         for v in predecessors[w]:
@@ -86,57 +64,69 @@ def calculate_dependency(predecessors, num_paths, dependency, source, nodes_sort
 
 def approximate_BC(G, c):
     n = G.number_of_nodes()
+    betweenness = {node: 0 for node in G.nodes}  # Initialize betweenness centrality for all nodes
     k = 0  # Counter for the number of samples
-    # Initialize shortest paths as a dict with empty entries
-    node_list = G.nodes
-    shortest_paths = {node: {other_node: [] for other_node in node_list} for node in node_list}
-    # Initialize all betweenness for all nodes to 0
-    betweenness = {node: 0 for node in node_list}
-    print(betweenness)
-    # running sum set to 0
-    S = 0
-    #  num SSP is for the calculation of the amount of SSPs calculated
-    num_SSP = 0
-    for v in node_list:
-        # running sum set to 0
-        S = 0
-        while S < c * n:
-            # Step 4: Choose a random source node
-            s = random.choice(list(G.nodes))
-            # Step 5: Compute shortest paths from the source
-            shortest_paths = shortest_path_calculation(shortest_paths, node_list, s, G)
-            num_SSP += 1
 
-            # Step 6: Track predecessor sets for each vertex
-            predecessors = {node: set() for node in node_list}
-            for target, path in shortest_paths[s].items():
-                for i in range(1, len(path)):  # Skip the source vertex
-                    predecessors[path[i]].add(path[i-1])  # Add the predecessor to the set
-            # Step 7: Calculate the dependency for vertex v
-            total_dependency = 0
-            for target, path in shortest_paths[s].items():
-                if target == s:  # Skip the source vertex
-                    continue
-                if v in predecessors[target]:
-                    total_dependency += 1
+    while any(b < c * n for b in betweenness.values()):
+        # Step 4: Choose a random source node
+        s = random.choice(list(G.nodes))
+        # Step 5: Compute shortest paths from the source
+        shortest_paths = nx.single_source_shortest_path_length(G, s)
+        # Step 6: Initialize λ_sw and predecessors
+        lambda_sw = {node: 0 for node in G.nodes}
+        lambda_sw[s] = 1
+        predecessors = {node: [] for node in G.nodes}
 
-            # Step 8: Update the running sum S
-            S += total_dependency
-            
-            k += 1  # Increment the number of samples
-        # calculate centrality
-        betweenness[v] = n*S/k
+        for node, dist in sorted(shortest_paths.items(), key=lambda x: x[1]):
+            for neighbor in G.neighbors(node):
+                if shortest_paths.get(neighbor, float('inf')) == dist - 1:
+                    lambda_sw[node] += lambda_sw[neighbor]
+                    predecessors[node].append(neighbor)
+
+        # Calculate dependencies
+        dependency = {node: 0 for node in G.nodes}
+        nodes_sorted = sorted(shortest_paths, key=shortest_paths.get, reverse=True)
+        for w in nodes_sorted:
+            for v in predecessors[w]:
+                # λ_sv / λ_sw * (1 + δ_s*(w))
+                fraction = lambda_sw[v] / lambda_sw[w]
+                dependency[v] += fraction * (1 + dependency[w])
+
+        # Update betweenness centrality for all nodes
+        for v in G.nodes:
+            if v != s:
+                betweenness[v] += dependency[v]
+        
+        k += 1  # Increment the number of samples
+
+    # Normalize the betweenness centrality
+    betweenness = {node: b * n / k for node, b in betweenness.items()}
     return betweenness
 
-# Create a simple graph
-G = nx.Graph()
-G.add_edges_from([('A', 'B'), ('B', 'C'), ('A', 'D'), ('B', 'E'), ('D', 'E')])
+n = 2000  # Number of vertices
+m = 7980  # Number of edges
 
-# List of nodes
-node_list = list(G.nodes)
-c = 1
-B = approximate_BC(G, c)
-print('Approximation')
-print(B)
-print('True BC:')
-print(nx.betweenness_centrality(G))
+# Generate Erdos-Renyi random graph
+G = nx.gnm_random_graph(n, m, seed=42)
+c = 3
+
+start_time = time.time()
+approx_centrality = approximate_BC(G, c)
+approx_time = time.time() - start_time
+average_approx_bc = sum(approx_centrality.values()) / len(approx_centrality)
+print(f"Approximate Betweenness Centrality for all nodes computed in {approx_time:.4f} seconds")
+print(f"Average Approximate Betweenness Centrality: {average_approx_bc:.4f}")
+
+# Measure time for exact betweenness centrality
+start_time = time.time()
+exact_centrality = nx.betweenness_centrality(G, normalized=False)
+exact_time = time.time() - start_time
+average_exact_bc = sum(exact_centrality.values()) / len(exact_centrality)
+print(f"Exact Betweenness Centrality for all nodes computed in {exact_time:.4f} seconds")
+print(f"Average Exact Betweenness Centrality: {average_exact_bc:.4f}")
+
+'''
+output_folder = "BetweennessCentrality"
+file_name = "betweenness_centrality_Amazon.txt"
+save_centrality_to_file(exact_centrality, output_folder, file_name)
+'''
