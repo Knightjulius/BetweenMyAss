@@ -10,6 +10,8 @@ class GraphCentralityCalculator:
         self.node_list = list(self.G.nodes)
         self.shortest_paths = {node: {other_node: [] for other_node in self.node_list} for node in self.node_list}
         self.betweenness = {node: 0 for node in self.node_list}
+        # TODO remove
+        self.betweennessAlt = {node: 0 for node in self.node_list}
         self.degrees = {node: self.G.degree(node) for node in self.node_list}  # Calculate degrees of nodes
         self.dependencies = {}  # Store dependencies for memoization
 
@@ -89,10 +91,12 @@ class GraphCentralityCalculator:
         num_SSP_dict = {node: 0 for node in self.node_list}  # Track num_SSP for each node
 
         for v in self.node_list:
-            print(f'Looking at node {v} out of {n}')
+            #print(f'Looking at node {v} out of {n}')
             Degree = self.G.degree(v)
             if Degree == 0 or Degree == 1:  # if the degree of v is 0 or 1 then the BC is automatically 0
                 self.betweenness[v] = 0
+                # TODO remove
+                self.betweennessAlt[v] = 0
             else:
                 S = 0
                 k = 0  # Counter for the number of samples
@@ -117,11 +121,11 @@ class GraphCentralityCalculator:
       
                     S += total_dependency
                 self.betweenness[v] = S / (k * (n - 1) * (n - 2))
-                print(f'Approx BC is: {self.betweenness[v]}')
-                end_time = time.time()  # Track the end time of the calculations
-                calculation_time = end_time - start_time  # Calculate the total calculation time
+                self.betweennessAlt[v] = (n*S)/k
+        end_time = time.time()  # Track the end time of the calculations
+        calculation_time = end_time - start_time  # Calculate the total calculation time
 
-        return self.betweenness, num_SSP_dict, calculation_time
+        return self.betweenness, self.betweennessAlt, num_SSP_dict, calculation_time
 
 
 def load_true_betweenness(file_path):
@@ -149,16 +153,21 @@ def process_graph(input_file, output_folder, c_values):
 
     for c in c_values:
         print(f"Calculating Betweenness Centrality for c={c}...")
-        betweenness, num_SSP_dict, calculation_time = calculator.approximate_BC(c)
+        betweenness, betweennessAlt, num_SSP_dict, calculation_time = calculator.approximate_BC(c)
 
         # Create output folder for the specific value of c
         c_output_folder = os.path.join(output_folder, f"Results_{c}")
+        # TODO remove
+        c_alt_output_folder = os.path.join(output_folder, f"Alt_Results_{c}")
         
         if not os.path.exists(c_output_folder):
             os.makedirs(c_output_folder)
+        if not os.path.exists(c_alt_output_folder):
+            os.makedirs(c_alt_output_folder)
 
         # Save all results in a single file
         calculator.save_results_to_file(true_bc, betweenness, num_SSP_dict, c_output_folder, f"results_c{c}.txt", calculation_time)
+        calculator.save_results_to_file(true_bc, betweennessAlt, num_SSP_dict, c_alt_output_folder, f"results_c{c}.txt", calculation_time)
 
 
 def process_all_graphs(input_folder, output_folder, c_values):
@@ -170,13 +179,14 @@ def process_all_graphs(input_folder, output_folder, c_values):
 # Input and output folders, and c values to process
 input_folder = 'GraphsNetworkX'  # Folder containing the graph files
 output_folder = 'Results'  # Parent folder to save the results
-c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
+c_values = [2, 3, 4, 5]  # Values of c to iterate over
+# c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 
 # Uncomment the next line to process all graphs in the folder
-# process_all_graphs(input_folder, output_folder, c_values)
+process_all_graphs(input_folder, output_folder, c_values)
 
 
-single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
-c_values = [1]  # Values of c to iterate over
-process_graph(single_graph, output_folder, c_values)
+#single_graph = "GraphsNetworkX/Test1.graphml"  # Specify the graph file you want to process
+#c_values = [1]  # Values of c to iterate over
+#process_graph(single_graph, output_folder, c_values)
 
