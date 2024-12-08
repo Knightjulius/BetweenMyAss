@@ -7,10 +7,11 @@ class GraphCentralityCalculator:
     def __init__(self, graph, graph_name):
         self.G = graph
         self.graph_name = graph_name  # Save the graph name
-        self.node_list = self.G.nodes
+        self.node_list = list(self.G.nodes)
         self.shortest_paths = {node: {other_node: [] for other_node in self.node_list} for node in self.node_list}
         self.betweenness = {node: 0 for node in self.node_list}
         self.degrees = {node: self.G.degree(node) for node in self.node_list}  # Calculate degrees of nodes
+        self.dependencies = {}  # Store dependencies for memoization
 
     def save_results_to_file(self, true_bc, approx_bc, num_SSP_dict, output_folder, file_name, calculation_time):
         """Save all results to a single file in the specified format."""
@@ -61,6 +62,28 @@ class GraphCentralityCalculator:
                     self.shortest_paths[s][node] = []
                     self.shortest_paths[node][s] = []
 
+    def calculate_dependency(self, s, t, v, predecessors):
+        # Base case: if s == t, dependency is zero
+        if s == t:
+            return 0
+        
+        # Memoize the dependency for the pair (s, t)
+        if (s, t, v) in self.dependencies:
+            return self.dependencies[(s, t, v)]
+
+        # Initialize the dependency for the pair (s, t)
+        dependency = 0
+
+        # Iterate over the predecessors of t
+        for w in predecessors[t]:
+            # Recursively calculate the dependency for (s, w)
+            dep_w = self.calculate_dependency(s, w, v, predecessors)
+            # Add to the dependency of (s, t) for vertex v
+            dependency += (1 + dep_w)
+        # Memoize the result
+        self.dependencies[(s, t, v)] = dependency
+        return dependency
+
     def approximate_BC(self, c):
         n = self.G.number_of_nodes()
         num_SSP_dict = {node: 0 for node in self.node_list}  # Track num_SSP for each node
@@ -90,11 +113,11 @@ class GraphCentralityCalculator:
                         if target == s:  # Skip the source vertex
                             continue
                         if v in path:
-                            total_dependency += 1
+                            total_dependency += self.calculate_dependency(s, target, v, predecessors)
+      
                     S += total_dependency
-                # used to be = n * S / k
                 self.betweenness[v] = S / (k * (n - 1) * (n - 2))
-
+                print(f'Approx BC is: {self.betweenness[v]}')
                 end_time = time.time()  # Track the end time of the calculations
                 calculation_time = end_time - start_time  # Calculate the total calculation time
 
@@ -153,7 +176,7 @@ c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 # process_all_graphs(input_folder, output_folder, c_values)
 
 
-single_graph = "GraphsNetworkX/Test1.graphml"  # Specify the graph file you want to process
-c_values = [5]  # Values of c to iterate over
+single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
+c_values = [1]  # Values of c to iterate over
 process_graph(single_graph, output_folder, c_values)
 
