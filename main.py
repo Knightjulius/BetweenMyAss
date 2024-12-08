@@ -10,59 +10,34 @@ class GraphCentralityCalculator:
         self.node_list = self.G.nodes
         self.shortest_paths = {node: {other_node: [] for other_node in self.node_list} for node in self.node_list}
         self.betweenness = {node: 0 for node in self.node_list}
+        self.degrees = {node: self.G.degree(node) for node in self.node_list}  # Calculate degrees of nodes
 
-    def save_num_SSP_to_file(self, num_SSP_dict, output_folder, file_name, calculation_time):
-        """Save number of SSPs for each node to a text file."""
+    def save_results_to_file(self, true_bc, approx_bc, num_SSP_dict, output_folder, file_name, calculation_time):
+        """Save all results to a single file in the specified format."""
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Get the total number of nodes
         total_nodes = len(self.G.nodes)
 
-        # Include the graph name in the file path
         file_path = os.path.join(output_folder, f"{self.graph_name}_{file_name}")
         with open(file_path, 'w') as f:
-            f.write(f"Calculation Time (seconds): {calculation_time}\n")
-            f.write(f"Total Number of Nodes: {total_nodes}\n")
-            f.write("Node\tNumSSP\tNumSSP/TotalNodes\n")
-            
-            # Write the SSP values and ratios for each node
-            for node, num_SSP in num_SSP_dict.items():
-                num_SSP_per_node = num_SSP / total_nodes if total_nodes > 0 else 0
-                f.write(f"{node}\t{num_SSP}\t{num_SSP_per_node:.6f}\n")
+            # Write the header
+            f.write(f"Total Nodes: {total_nodes}\n")
+            f.write(f"Calculation Time (seconds): {calculation_time}\n\n")
+            f.write("Node\tDegree\tTrue_BC\tApproximated_BC\tErrorPercentage\tNumSSP\tNumSSP/TotalNodes\n")
 
-        print(f"Number of SSPs and additional results saved to {file_path}")
-
-    def save_centrality_to_file(self, centrality_dict, output_folder, file_name):
-        """Save betweenness centrality results to a text file."""
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-
-        # Include the graph name in the file path
-        file_path = os.path.join(output_folder, f"{self.graph_name}_{file_name}")
-        with open(file_path, 'w') as f:
-            f.write("Node\tBetweennessCentrality\n")
-            for node, centrality in centrality_dict.items():
-                f.write(f"{node}\t{centrality}\n")
-
-        print(f"Centrality results saved to {file_path}")
-
-    def save_error_percentage(self, true_bc, approx_bc, output_folder, file_name):
-        """Calculate and save the error percentage between true and approximated BC values."""
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-
-        file_path = os.path.join(output_folder, f"{self.graph_name}_{file_name}")
-        with open(file_path, 'w') as f:
-            f.write("Node\tErrorPercentage\n")
+            # Write the data for each node
             for node in true_bc:
-                if true_bc[node] > 0:
-                    error_percentage = (abs(true_bc[node] - approx_bc[node]) / true_bc[node]) * 100
-                else:
-                    error_percentage = 0  # Avoid division by zero for nodes with true BC == 0
-                f.write(f"{node}\t{error_percentage:.6f}\n")
+                degree = self.degrees.get(node, 0)  # Get the degree of the node
+                true_bc_value = true_bc[node]
+                approx_bc_value = approx_bc.get(node, 0)  # Get the approximated BC value
+                error_percentage = (abs(true_bc_value - approx_bc_value) / true_bc_value) * 100 if true_bc_value > 0 else 0
+                num_SSP = num_SSP_dict.get(node, 0)  # Get the number of SSP calculations for the node
+                num_SSP_per_node = num_SSP / total_nodes if total_nodes > 0 else 0
 
-        print(f"Error percentage saved to {file_path}")
+                f.write(f"{node}\t{degree}\t{true_bc_value}\t{approx_bc_value}\t{error_percentage:.6f}\t{num_SSP}\t{num_SSP_per_node:.6f}\n")
+
+        print(f"Results saved to {file_path}")
 
     def shortest_path_calculation(self, s):
         for node in self.node_list:
@@ -153,26 +128,14 @@ def process_graph(input_file, output_folder, c_values):
         print(f"Calculating Betweenness Centrality for c={c}...")
         betweenness, num_SSP_dict, calculation_time = calculator.approximate_BC(c)
 
-        # Create output subfolders for the specific value of c
-        c_output_folder_betweenness = os.path.join(output_folder, f"BetweennessResults_{c}")
-        c_output_folder_ssp = os.path.join(output_folder, f"SSPCalcs_{c}")
-        c_output_folder_error = os.path.join(output_folder, f"ErrorResults_{c}")
+        # Create output folder for the specific value of c
+        c_output_folder = os.path.join(output_folder, f"Results_{c}")
         
-        if not os.path.exists(c_output_folder_betweenness):
-            os.makedirs(c_output_folder_betweenness)
-        if not os.path.exists(c_output_folder_ssp):
-            os.makedirs(c_output_folder_ssp)
-        if not os.path.exists(c_output_folder_error):
-            os.makedirs(c_output_folder_error)
+        if not os.path.exists(c_output_folder):
+            os.makedirs(c_output_folder)
 
-        # Save betweenness centrality to the BetweennessResults folder
-        calculator.save_centrality_to_file(betweenness, c_output_folder_betweenness, f"betweenness_c{c}.txt")
-        
-        # Save number of SSP calculations to the SSPCalcs folder
-        calculator.save_num_SSP_to_file(num_SSP_dict, c_output_folder_ssp, f"num_SSP_c{c}.txt", calculation_time)
-        
-        # Calculate and save the error percentage
-        calculator.save_error_percentage(true_bc, betweenness, c_output_folder_error, f"error_percentage_c{c}.txt")
+        # Save all results in a single file
+        calculator.save_results_to_file(true_bc, betweenness, num_SSP_dict, c_output_folder, f"results_c{c}.txt", calculation_time)
 
 
 def process_all_graphs(input_folder, output_folder, c_values):
@@ -193,3 +156,4 @@ c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 single_graph = "GraphsNetworkX/Test1.graphml"  # Specify the graph file you want to process
 c_values = [5]  # Values of c to iterate over
 process_graph(single_graph, output_folder, c_values)
+
