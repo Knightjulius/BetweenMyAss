@@ -177,34 +177,60 @@ def process_all_graphs(input_folder, output_folder, c_values):
             file_path = os.path.join(input_folder, file_name)
             process_graph(file_path, output_folder, c_values)
 
+def process_graph_single_c(input_file, output_folder, c):
+    """Process a single graph file for a specific value of c."""
+    # Load the graph from the specified file
+    G = nx.read_graphml(input_file)
+    graph_name = os.path.basename(input_file).split('.')[0]  # Extract graph name from the file name
+    print(f"Processing graph: {graph_name} for c={c}")
+    
+    calculator = GraphCentralityCalculator(G, graph_name)
 
-def process_all_graphs_multithreaded(input_folder, output_folder, c_values, max_threads=32):
-    """Process all graph files in the input folder using multithreading."""
-    graph_files = [os.path.join(input_folder, file_name) 
-                   for file_name in os.listdir(input_folder) if file_name.endswith('.graphml')]
+    # Load true betweenness centrality values from the corresponding file
+    true_bc_file_path = os.path.join('BetweennessCentrality', f'betweenness_centrality_{graph_name}.txt')
+    true_bc = load_true_betweenness(true_bc_file_path)
 
-    # Function to process a single graph
-    def process_single_graph(file_path):
-        process_graph(file_path, output_folder, c_values)
+    # Calculate Betweenness Centrality for the given c value
+    betweenness, betweennessAlt, num_SSP_dict, calculation_time = calculator.approximate_BC(c)
+
+    # Create output folder for the specific value of c
+    c_output_folder = os.path.join(output_folder, f"Results_{c}")
+    c_alt_output_folder = os.path.join(output_folder, f"Alt_Results_{c}")
+    
+    if not os.path.exists(c_output_folder):
+        os.makedirs(c_output_folder)
+    if not os.path.exists(c_alt_output_folder):
+        os.makedirs(c_alt_output_folder)
+
+    # Save all results in a single file
+    calculator.save_results_to_file(true_bc, betweenness, num_SSP_dict, c_output_folder, f"results_c{c}.txt", calculation_time)
+    calculator.save_results_to_file(true_bc, betweennessAlt, num_SSP_dict, c_alt_output_folder, f"results_c{c}.txt", calculation_time)
+
+
+def process_all_graphs_multithreaded(input_folder, output_folder, c_values, max_threads=128):
+    """Process all graph files and all c values using multithreading."""
+    # Prepare the list of tasks (graph file, c value)
+    tasks = []
+    for file_name in os.listdir(input_folder):
+        if file_name.endswith('.graphml'):  # Handle .graphml files
+            input_file = os.path.join(input_folder, file_name)
+            for c in c_values:
+                tasks.append((input_file, c))
+
+    # Function to process a single task (graph file, c value)
+    def process_task(task):
+        input_file, c = task
+        process_graph_single_c(input_file, output_folder, c)
 
     # Use ThreadPoolExecutor for multithreading
     with ThreadPoolExecutor(max_threads) as executor:
-        executor.map(process_single_graph, graph_files)
+        executor.map(process_task, tasks)
 
-# Input and output folders, and c values to process
 input_folder = 'GraphsNetworkX'  # Folder containing the graph files
 output_folder = 'Results'  # Parent folder to save the results
 c_values = [2, 3, 4, 5]  # Values of c to iterate over
 
-# Process all graphs in the folder with multithreading
-process_all_graphs_multithreaded(input_folder, output_folder, c_values)
-
-# Input and output folders, and c values to process
-input_folder = 'GraphsNetworkX'  # Folder containing the graph files
-output_folder = 'Results'  # Parent folder to save the results
-c_values = [2, 3, 4, 5]  # Values of c to iterate over
-
-# Process all graphs in the folder with multithreading
+# Process all graphs and c values in the folder with multithreading
 process_all_graphs_multithreaded(input_folder, output_folder, c_values)
 
 
