@@ -2,6 +2,7 @@ import networkx as nx
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 class GraphCentralityCalculator:
     def __init__(self, graph, graph_name):
@@ -176,14 +177,35 @@ def process_all_graphs(input_folder, output_folder, c_values):
             file_path = os.path.join(input_folder, file_name)
             process_graph(file_path, output_folder, c_values)
 
+
+def process_all_graphs_multithreaded(input_folder, output_folder, c_values, max_threads=32):
+    """Process all graph files in the input folder using multithreading."""
+    graph_files = [os.path.join(input_folder, file_name) 
+                   for file_name in os.listdir(input_folder) if file_name.endswith('.graphml')]
+
+    # Function to process a single graph
+    def process_single_graph(file_path):
+        process_graph(file_path, output_folder, c_values)
+
+    # Use ThreadPoolExecutor for multithreading
+    with ThreadPoolExecutor(max_threads) as executor:
+        executor.map(process_single_graph, graph_files)
+
 # Input and output folders, and c values to process
 input_folder = 'GraphsNetworkX'  # Folder containing the graph files
 output_folder = 'Results'  # Parent folder to save the results
 c_values = [2, 3, 4, 5]  # Values of c to iterate over
-# c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 
-# Uncomment the next line to process all graphs in the folder
-process_all_graphs(input_folder, output_folder, c_values)
+# Process all graphs in the folder with multithreading
+process_all_graphs_multithreaded(input_folder, output_folder, c_values)
+
+# Input and output folders, and c values to process
+input_folder = 'GraphsNetworkX'  # Folder containing the graph files
+output_folder = 'Results'  # Parent folder to save the results
+c_values = [2, 3, 4, 5]  # Values of c to iterate over
+
+# Process all graphs in the folder with multithreading
+process_all_graphs_multithreaded(input_folder, output_folder, c_values)
 
 
 #single_graph = "GraphsNetworkX/Test1.graphml"  # Specify the graph file you want to process
