@@ -179,7 +179,6 @@ def process_graph(input_file, output_folder, c_values):
         calculator.save_results_to_file(true_bc, betweenness, num_SSP_dict, c_output_folder, f"results_c{c}.txt", calculation_time)
         calculator.save_results_to_file(true_bc, betweenness2, num_SSP_dict, c_output_folder2, f"results_c{c}.txt", calculation_time)
         calculator.save_results_to_file(true_bc, betweenness3, num_SSP_dict, c_output_folder3, f"results_c{c}.txt", calculation_time)
-        exit()
 
 def process_all_graphs(input_folder, output_folder, c_values):
     for file_name in os.listdir(input_folder):
@@ -193,8 +192,8 @@ output_folder = 'Results2'  # Parent folder to save the results
 c_values = [2, 3, 4, 5]  # Values of c to iterate over
 
 # Uncomment the next line to process all graphs in the folder
-# process_all_graphs(input_folder, output_folder, c_values)
+process_all_graphs(input_folder, output_folder, c_values)
 
 
-single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
-process_graph(single_graph, output_folder, c_values)
+#single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
+#process_graph(single_graph, output_folder, c_values)
