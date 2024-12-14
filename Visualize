@@ -1,0 +1,51 @@
+import matplotlib.pyplot as plt
+import os
+from main2 import load_true_betweenness
+
+def plot_bc_comparison_with_approximations(graph_name, c_list, output_folder):
+    """
+    Plot the comparison between true BC and averaged approximated BC for all c values.
+    """
+    plt.figure(figsize=(14, 7))
+    x = range(1, 31)  # Top 30 nodes
+    # Load true BC values
+    true_bc_file_path = os.path.join('BetweennessCentrality', f'betweenness_centrality_{graph_name}.txt')
+    true_bc = load_true_betweenness(true_bc_file_path)
+    top_nodes = sorted(true_bc, key=true_bc.get, reverse=True)[:30]
+
+    # Prepare data for plotting
+    true_bc_values = [true_bc[node] for node in top_nodes]  # True BC for top 30 nodes
+
+    for c in c_list:
+        averaged_file = os.path.join(output_folder, f'{graph_name}_averaged_results_c{c}.txt')
+        with open(averaged_file, 'r') as f:
+            lines = f.readlines()[1:]  # Skip the header
+            averaged_results = {int(line.split()[0]): float(line.split()[1]) for line in lines}
+
+            top_nodes = sorted(averaged_results.keys())[:30]  # Get top 30 keys
+            averaged_values = [averaged_results[node] for node in top_nodes]
+        plt.plot(x, averaged_values, label=f'Approximated BC (c={c})', marker='x')
+
+    # Plot the results
+    plt.plot(x, true_bc_values, label='True BC', marker='o', linestyle='-')
+
+    plt.title(f'Comparison of True BC and Approximated BC for {graph_name}')
+    plt.xlabel('Top 30 Nodes')
+    plt.ylabel('Betweenness Centrality')
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+
+    # Save the plot
+    output_plot_path = os.path.join(output_folder, f'{graph_name}_approximated_vs_exact_plot.png')
+    plt.savefig(output_plot_path)
+    plt.show()
+    print(f"Averaged BC plot saved to {output_plot_path}")
+
+# Example usage for all graphs
+graph_names = ['Rand', 'Cite', 'Crawl', 'Pref-attach', 'Road']
+c_list = [2, 3, 4, 5]
+output_folder = 'Averages'
+
+for graph_name in graph_names:
+    plot_bc_comparison_with_approximations(graph_name, c_list, output_folder)

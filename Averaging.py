@@ -31,7 +31,7 @@ def average_approx_BC(graph_name, c, output_folder):
     for node in top_nodes:
         approx_bc_list = []  # List to store approximated BC for all repetitions
         for rep in range(5):
-            result_file = os.path.join('Results2', f'Results_c{c}', f'{graph_name}_results_c{c}_rep{rep}.txt')
+            result_file = os.path.join('Results2', f'ResultsAlt2_c{c}', f'{graph_name}_results_c{c}_rep{rep}.txt')
             with open(result_file, 'r') as f:
                 lines = f.readlines()
                 for line in lines[4:]:  # Skip the first 3 lines (metadata and header)
@@ -45,7 +45,7 @@ def average_approx_BC(graph_name, c, output_folder):
         averaged_results[node] = sum(approx_bc_list) / len(approx_bc_list) if approx_bc_list else 0
 
     # Write the averaged results to an output file
-    output_file = os.path.join(output_folder, f'{graph_name}_averaged_results_c{c}.txt')
+    output_file = os.path.join(output_folder, f'{graph_name}_averaged_altresults2_c{c}.txt')
     os.makedirs(output_folder, exist_ok=True)
     with open(output_file, 'w') as f:
         f.write("Node\tAverage_Approximated_BC\n")
