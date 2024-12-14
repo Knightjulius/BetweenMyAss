@@ -161,7 +161,6 @@ def process_graph(input_file, output_folder, c_values):
 
     for c in c_values:
         print(f"Calculating Betweenness Centrality for c={c}...")
-        betweenness, betweenness2, betweenness3, num_SSP_dict, calculation_time = calculator.approximate_BC(c, top_nodes)
 
         # Create output folder for the specific value of c
         c_output_folder = os.path.join(output_folder, f"Results_c{c}")
@@ -175,10 +174,14 @@ def process_graph(input_file, output_folder, c_values):
         if not os.path.exists(c_output_folder3):
             os.makedirs(c_output_folder3)
 
-        # Save all results in a single file
-        calculator.save_results_to_file(true_bc, betweenness, num_SSP_dict, c_output_folder, f"results_c{c}.txt", calculation_time)
-        calculator.save_results_to_file(true_bc, betweenness2, num_SSP_dict, c_output_folder2, f"results_c{c}.txt", calculation_time)
-        calculator.save_results_to_file(true_bc, betweenness3, num_SSP_dict, c_output_folder3, f"results_c{c}.txt", calculation_time)
+        for rep in range(5):
+            print(f'Repetition {rep}')
+            betweenness, betweenness2, betweenness3, num_SSP_dict, calculation_time = calculator.approximate_BC(c, top_nodes)
+
+            # Save all results in a single file
+            calculator.save_results_to_file(true_bc, betweenness, num_SSP_dict, c_output_folder, f"results_c{c}_rep{rep}.txt", calculation_time)
+            calculator.save_results_to_file(true_bc, betweenness2, num_SSP_dict, c_output_folder2, f"results_c{c}_rep{rep}.txt", calculation_time)
+            calculator.save_results_to_file(true_bc, betweenness3, num_SSP_dict, c_output_folder3, f"results_c{c}_rep{rep}.txt", calculation_time)
 
 def process_all_graphs(input_folder, output_folder, c_values):
     for file_name in os.listdir(input_folder):
