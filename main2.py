@@ -189,14 +189,16 @@ def process_all_graphs(input_folder, output_folder, c_values):
             file_path = os.path.join(input_folder, file_name)
             process_graph(file_path, output_folder, c_values)
 
-# Input and output folders, and c values to process
-input_folder = 'GraphsNetworkX'  # Folder containing the graph files
-output_folder = 'Results2'  # Parent folder to save the results
-c_values = [2, 3, 4, 5]  # Values of c to iterate over
+if __name__ == "__main__":
 
-# Uncomment the next line to process all graphs in the folder
-process_all_graphs(input_folder, output_folder, c_values)
+    # Input and output folders, and c values to process
+    input_folder = 'GraphsNetworkX'  # Folder containing the graph files
+    output_folder = 'Results2'  # Parent folder to save the results
+    c_values = [2, 3, 4, 5]  # Values of c to iterate over
+
+    # Uncomment the next line to process all graphs in the folder
+    process_all_graphs(input_folder, output_folder, c_values)
 
 
-#single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
-#process_graph(single_graph, output_folder, c_values)
+    #single_graph = "GraphsNetworkX/Rand.graphml"  # Specify the graph file you want to process
+    #process_graph(single_graph, output_folder, c_values)
