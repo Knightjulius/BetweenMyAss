@@ -9,14 +9,12 @@ class GraphCentralityCalculator:
         self.graph_name = graph_name  # Save the graph name
         self.node_list = list(self.G.nodes)
         self.shortest_paths = {node: {other_node: [] for other_node in self.node_list} for node in self.node_list}
-        self.betweenness = {node: 0 for node in self.node_list}
-        # TODO remove
-        self.betweennessAlt = {node: 0 for node in self.node_list}
+        self.betweenness = {node: 0 for node in self.node_list} # betweenness centrality values for all nodes
+        self.betweennessAlt = {node: 0 for node in self.node_list} # for alternative way to calculate betweennesscentrality
         self.degrees = {node: self.G.degree(node) for node in self.node_list}  # Calculate degrees of nodes
         self.dependencies = {}  # Store dependencies for memoization
 
     def save_results_to_file(self, true_bc, approx_bc, num_SSP_dict, output_folder, file_name, calculation_time):
-        """Save all results to a single file in the specified format."""
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
@@ -60,7 +58,7 @@ class GraphCentralityCalculator:
                             self.shortest_paths[u][v] = [u, v]
                             self.shortest_paths[v][u] = [v, u]  # Also store the reverse path
                 else:
-                    # No path exists between node and s, mark it as empty or some placeholder
+                    # No path exists between node and s, mark it as empty
                     self.shortest_paths[s][node] = []
                     self.shortest_paths[node][s] = []
 
@@ -91,14 +89,12 @@ class GraphCentralityCalculator:
         num_SSP_dict = {node: 0 for node in self.node_list}  # Track num_SSP for each node
 
         for v in self.node_list:
-            #print(f'Looking at node {v} out of {n}')
             Degree = self.G.degree(v)
             if Degree == 0 or Degree == 1:  # if the degree of v is 0 or 1 then the BC is automatically 0
                 self.betweenness[v] = 0
-                # TODO remove
                 self.betweennessAlt[v] = 0
             else:
-                S = 0
+                S = 0  # Counter for the running sum
                 k = 0  # Counter for the number of samples
 
                 start_time = time.time()  # Track the start time of the calculations
@@ -129,7 +125,6 @@ class GraphCentralityCalculator:
 
 
 def load_true_betweenness(file_path):
-    """Load true betweenness centrality values from a file."""
     true_bc = {}
     with open(file_path, 'r') as f:
         next(f)  # Skip header
@@ -157,7 +152,6 @@ def process_graph(input_file, output_folder, c_values):
 
         # Create output folder for the specific value of c
         c_output_folder = os.path.join(output_folder, f"Results_{c}")
-        # TODO remove
         c_alt_output_folder = os.path.join(output_folder, f"Alt_Results_{c}")
         
         if not os.path.exists(c_output_folder):
@@ -172,7 +166,7 @@ def process_graph(input_file, output_folder, c_values):
 
 def process_all_graphs(input_folder, output_folder, c_values):
     for file_name in os.listdir(input_folder):
-        if file_name.endswith('.graphml'):  # Handle .graphml files
+        if file_name.endswith('.graphml'):  
             file_path = os.path.join(input_folder, file_name)
             process_graph(file_path, output_folder, c_values)
 
@@ -180,7 +174,6 @@ def process_all_graphs(input_folder, output_folder, c_values):
 input_folder = 'GraphsNetworkX'  # Folder containing the graph files
 output_folder = 'Results'  # Parent folder to save the results
 c_values = [2, 3, 4, 5]  # Values of c to iterate over
-# c_values = [2, 3, 4, 5, 8, 10, 15, 20]  # Values of c to iterate over
 
 # Uncomment the next line to process all graphs in the folder
 process_all_graphs(input_folder, output_folder, c_values)
