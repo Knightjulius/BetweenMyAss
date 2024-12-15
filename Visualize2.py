@@ -16,7 +16,7 @@ def plot_error_comparison(graph_name, c_list, output_folder):
     top_nodes = sorted(true_bc, key=true_bc.get, reverse=True)[:30]
 
     for c in c_list:
-        averaged_file = os.path.join(output_folder, f'{graph_name}_averaged_results_c{c}.txt')
+        averaged_file = os.path.join(output_folder, f'{graph_name}_averaged_results3_c{c}.txt')
         with open(averaged_file, 'r') as f:
             lines = f.readlines()[1:]  # Skip the header
             averaged_results = {int(line.split()[0]): float(line.split()[1]) for line in lines}
@@ -43,7 +43,7 @@ def plot_error_comparison(graph_name, c_list, output_folder):
     plt.tight_layout()
 
     # Save the plot
-    output_plot_path = os.path.join(output_folder, f'{graph_name}_error_comparison_plot.png')
+    output_plot_path = os.path.join(output_folder, f'{graph_name}_error_comparison_plot3.png')
     plt.savefig(output_plot_path)
     plt.show()
     print(f"Error plot saved to {output_plot_path}")
